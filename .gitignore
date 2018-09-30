@@ -38,6 +38,10 @@ build/
 .gradle
 local.properties
 *.iml
+#Added by repository author
+android/libs/*.jar
+android/src/main/jniLibs/armeabi-v7a
+android/gradle/wrapper/gradle-wrapper.jar
 
 # BUCK
 buck-out/
