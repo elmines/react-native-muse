@@ -1,6 +1,7 @@
 
 package com.reactlibrary;
 
+
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -10,18 +11,26 @@ import com.choosemuse.libmuse.MuseManagerAndroid;
 
 import android.util.Log;
 
+//For obtaining permissions
+import android.R;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.app.ActivityCompat;
+import android.content.pm.PackageManager;
+import android.Manifest;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.app.Activity;
+
 public class RNLibMuseModule extends ReactContextBaseJavaModule {
 
   private final ReactApplicationContext reactContext;
-
-  private final MuseManagerAndroid manager;
+  public static Activity mainActivity;
+  private MuseManagerAndroid manager = null; //Not initialized in constructor, so it can't be final
 
   public RNLibMuseModule(ReactApplicationContext reactContext) {
     super(reactContext);
     this.reactContext = reactContext;
 
-    this.manager = MuseManagerAndroid.getInstance();
-    Log.i("ReactNative","Yo, check out my instance of MuseManagerAndroid: "+this.manager);
   }
 
   @Override
@@ -30,5 +39,41 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void startListening() {this.manager.startListening(); Log.i("ReactNative", "Started listening. . .");}
+  public void Init()
+  {
+    if (this.mainActivity == null)
+      throw new RuntimeException("You must set RNLibMuseModule.mainActivity in the constructor of your app's MainActivity class");
+    this.manager = MuseManagerAndroid.getInstance();
+    this.manager.setContext(this.mainActivity);
+    this.VerifyPermissions();
+  }
+
+  @ReactMethod
+  public void startListening() {this.manager.startListening();}
+
+  private void VerifyPermissions()
+  {
+    if (ContextCompat.checkSelfPermission(this.mainActivity, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+      return;
+
+    DialogInterface.OnClickListener buttonListener =
+      new DialogInterface.OnClickListener()
+      {
+        public void onClick(DialogInterface dialog, int which)
+        {
+          dialog.dismiss();
+          ActivityCompat.requestPermissions(RNLibMuseModule.mainActivity,
+            new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 0);
+        }
+      };
+      //Those com.reactlibrary. qualifiers are necessary, as
+      //  the main module may/will have its own resources
+      AlertDialog introDialog = new AlertDialog.Builder(this.mainActivity)
+        .setTitle(com.reactlibrary.R.string.permission_dialog_title) //Do they see my changes?
+        .setMessage(com.reactlibrary.R.string.permission_dialog_description)
+        .setPositiveButton(com.reactlibrary.R.string.permission_dialog_understand, buttonListener)
+        .create();
+      Log.i("ReactNative", "Instantiated the introDialog");
+      introDialog.show();
+  }
 }
