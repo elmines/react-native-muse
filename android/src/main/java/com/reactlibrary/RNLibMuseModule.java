@@ -1,37 +1,46 @@
-
 package com.reactlibrary;
 
-
+//Bridge modules
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 
-import com.choosemuse.libmuse.MuseManagerAndroid;
+//Emitting events
+import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 
-import android.util.Log;
+//Libmuse
+import com.choosemuse.libmuse.MuseManagerAndroid;
+import com.choosemuse.libmuse.MuseListener;
+import com.choosemuse.libmuse.Muse;
+import com.choosemuse.libmuse.ConnectionState;
+import com.choosemuse.libmuse.MuseConnectionPacket;
+import com.choosemuse.libmuse.MuseConnectionListener;
+
+//Java utilities
+import java.util.List;
+import java.util.LinkedList;
 
 //For obtaining permissions
 import android.R;
 import android.support.v4.content.PermissionChecker;
-//import android.support.v4.content.ContextCompat;
-//import android.support.v4.app.ActivityCompat;
-//import android.content.pm.PackageManager;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.app.Activity;
 
+//Debugging
+import android.util.Log;
+
 public class RNLibMuseModule extends ReactContextBaseJavaModule {
 
-  private final ReactApplicationContext reactContext;
   public static Activity mainActivity;
-  private MuseManagerAndroid manager = null; //Not initialized in constructor, so it can't be final
 
   public RNLibMuseModule(ReactApplicationContext reactContext) {
     super(reactContext);
     this.reactContext = reactContext;
-
   }
 
   @Override
@@ -44,13 +53,92 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   {
     if (this.mainActivity == null)
       throw new RuntimeException("You must set RNLibMuseModule.mainActivity in the constructor of your app's MainActivity class");
+    this.VerifyPermissions();
+
+    this.connectionListener = createMuseConnectionListener();
+
     this.manager = MuseManagerAndroid.getInstance();
     this.manager.setContext(this.mainActivity);
-    this.VerifyPermissions();
+    this.manager.setMuseListener(new MuseListener(){
+      @Override
+      public void museListChanged(){RNLibMuseModule.this.museListChanged();}
+    });
+    //this.manager.setMuseConnection
+    this.muses = this.manager.getMuses(); //FIXME: Just initialize to null?
+
   }
 
   @ReactMethod
-  public void startListening() {this.manager.startListening();}
+  public void search()
+  {
+    this.stopListening();
+    this.startListening();
+  }
+
+  /**
+  *
+  */
+  @ReactMethod
+  public void connect(String headbandName)
+  {
+    this.stopListening();
+    for (Muse candidate : this.muses)
+    {
+      if (candidate.getName() == headbandName)
+      {
+        this.muse = candidate;
+        break;
+      }
+    }
+    this.muse.unregisterAllListeners();
+    this.muse.registerConnectionListener(this.connectionListener);
+    this.muse.runAsynchronously();
+  }
+
+  private final ReactApplicationContext reactContext;
+  private MuseManagerAndroid manager; //Not initialized in constructor, so it can't be final
+  private MuseListener museListener;
+  private MuseConnectionListener connectionListener;
+  private List<Muse> muses;
+  private Muse muse;
+  private ConnectionState connectionState;
+
+  private void startListening() {this.manager.startListening(); Log.i("ReactNative", "Started listening");}
+  private void stopListening() {this.manager.stopListening();}
+
+  private void emitEvent(String name, WritableArray args)
+  {
+    this.reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(name, args);
+  }
+
+  /**
+   * Emits OnMuseListChanged event to ReactNative
+  */
+  private void museListChanged()
+  {
+    Log.i("ReactNative", "Called museListChanged()");
+    this.muses = this.manager.getMuses();
+    WritableArray eventArgs = Arguments.createArray();
+    for (Muse element : this.muses) eventArgs.pushString(element.getName());
+    this.emitEvent("OnMuseListChanged", eventArgs);
+  }
+
+  private void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
+  {
+     final ConnectionState currState = packet.getCurrentConnectionState();
+     Log.i("ReactNative", packet.getPreviousConnectionState() + "->" + currState);
+  }
+
+  private MuseConnectionListener createMuseConnectionListener()
+  {
+    return new MuseConnectionListener(){
+      @Override
+      public void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
+      {
+        this.receiveMuseConnectionPacket(packet, muse);
+      }
+    };
+  }
 
   private void VerifyPermissions()
   {
