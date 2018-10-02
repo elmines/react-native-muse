@@ -82,17 +82,15 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   public void connect(String headbandName)
   {
     this.stopListening();
-    for (Muse candidate : this.muses)
+    for (Muse candidate : this.manager.getMuses())
     {
-      if (candidate.getName() == headbandName)
+      if (candidate.getName().equals(headbandName))
       {
         this.muse = candidate;
-        break;
+        this.connectHelper();
+        return;
       }
     }
-    this.muse.unregisterAllListeners();
-    this.muse.registerConnectionListener(this.connectionListener);
-    this.muse.runAsynchronously();
   }
 
   private final ReactApplicationContext reactContext;
@@ -111,6 +109,13 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
     this.reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(name, args);
   }
 
+  private void connectHelper()
+  {
+    this.muse.unregisterAllListeners();
+    this.muse.registerConnectionListener(this.connectionListener);
+    this.muse.runAsynchronously();
+  }
+
   /**
    * Emits OnMuseListChanged event to ReactNative
   */
@@ -126,7 +131,17 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   private void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
   {
      final ConnectionState currState = packet.getCurrentConnectionState();
-     Log.i("ReactNative", packet.getPreviousConnectionState() + "->" + currState);
+     //Log.i("ReactNative", packet.getPreviousConnectionState() + "->" + currState);
+
+     if (currState == ConnectionState.DISCONNECTED)
+     {
+       Log.i("ReactNative", String.format("Disconnected from Muse headband %s", this.muse.getName()));
+       this.muse = null;
+     }
+     else if (currState == ConnectionState.CONNECTED)
+     {
+       Log.i("ReactNative", String.format("Connected to Muse headband %s", this.muse.getName()));
+     }
   }
 
   private MuseConnectionListener createMuseConnectionListener()
@@ -135,7 +150,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
       @Override
       public void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
       {
-        this.receiveMuseConnectionPacket(packet, muse);
+        RNLibMuseModule.this.receiveMuseConnectionPacket(packet, muse);
       }
     };
   }
