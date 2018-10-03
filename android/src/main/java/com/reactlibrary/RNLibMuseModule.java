@@ -1,29 +1,38 @@
 package com.reactlibrary;
 
-//Bridge modules
+//BRIDGING
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 
-//Emitting events
+//EVENTS
+import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
-//Libmuse
+//LIBMUSE
+//Connecting
 import com.choosemuse.libmuse.MuseManagerAndroid;
 import com.choosemuse.libmuse.MuseListener;
 import com.choosemuse.libmuse.Muse;
 import com.choosemuse.libmuse.ConnectionState;
 import com.choosemuse.libmuse.MuseConnectionPacket;
 import com.choosemuse.libmuse.MuseConnectionListener;
+//Data
+import com.choosemuse.libmuse.MuseDataListener;
+import com.choosemuse.libmuse.MuseDataPacket;
+import com.choosemuse.libmuse.MuseArtifactPacket;
+import com.choosemuse.libmuse.MuseDataPacketType;
+import com.choosemuse.libmuse.MuseDataPacketType.*; //Need the unqualified enumeration constants
+import com.choosemuse.libmuse.Eeg;
 
-//Java utilities
+//UTILITIES
 import java.util.List;
 import java.util.LinkedList;
 
-//For obtaining permissions
+//ANDROID PERMISSIONS
 import android.R;
 import android.support.v4.content.PermissionChecker;
 import android.Manifest;
@@ -31,7 +40,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.app.Activity;
 
-//Debugging
+//DEBUGGING
 import android.util.Log;
 
 public class RNLibMuseModule extends ReactContextBaseJavaModule {
@@ -56,6 +65,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
     this.VerifyPermissions();
 
     this.connectionListener = createMuseConnectionListener();
+    this.dataListener       = createMuseDataListener();
 
     this.manager = MuseManagerAndroid.getInstance();
     this.manager.setContext(this.mainActivity);
@@ -63,9 +73,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
       @Override
       public void museListChanged(){RNLibMuseModule.this.museListChanged();}
     });
-    //this.manager.setMuseConnection
     this.muses = this.manager.getMuses(); //FIXME: Just initialize to null?
-
   }
 
   @ReactMethod
@@ -75,9 +83,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
     this.startListening();
   }
 
-  /**
-  *
-  */
+
   @ReactMethod
   public void connect(String headbandName)
   {
@@ -94,18 +100,21 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   }
 
   private final ReactApplicationContext reactContext;
-  private MuseManagerAndroid manager; //Not initialized in constructor, so it can't be final
-  private MuseListener museListener;
-  private MuseConnectionListener connectionListener;
-  private List<Muse> muses;
-  private Muse muse;
-  private ConnectionState connectionState;
+  private MuseManagerAndroid                 manager;
+  private MuseListener                  museListener;
+  private MuseConnectionListener  connectionListener;
+  private MuseDataListener              dataListener;
+  private List<Muse>                           muses;
+  private Muse                                  muse;
+  private ConnectionState            connectionState;
+
 
   private void startListening() {this.manager.startListening(); Log.i("ReactNative", "Started listening");}
   private void stopListening() {this.manager.stopListening();}
 
-  private void emitEvent(String name, WritableArray args)
+  private void emitEvent(String name, Object args)
   {
+    //Log.i("ReactNative", String.format("Emitting %s", name));
     this.reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(name, args);
   }
 
@@ -113,6 +122,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   {
     this.muse.unregisterAllListeners();
     this.muse.registerConnectionListener(this.connectionListener);
+    this.muse.registerDataListener(this.dataListener, MuseDataPacketType.EEG);
     this.muse.runAsynchronously();
   }
 
@@ -121,7 +131,6 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   */
   private void museListChanged()
   {
-    Log.i("ReactNative", "Called museListChanged()");
     this.muses = this.manager.getMuses();
     WritableArray eventArgs = Arguments.createArray();
     for (Muse element : this.muses) eventArgs.pushString(element.getName());
@@ -131,17 +140,60 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   private void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
   {
      final ConnectionState currState = packet.getCurrentConnectionState();
-     //Log.i("ReactNative", packet.getPreviousConnectionState() + "->" + currState);
-
      if (currState == ConnectionState.DISCONNECTED)
      {
-       Log.i("ReactNative", String.format("Disconnected from Muse headband %s", this.muse.getName()));
+       Log.i("ReactNative", String.format("Disconnected from %s", this.muse.getName()));
        this.muse = null;
      }
      else if (currState == ConnectionState.CONNECTED)
      {
-       Log.i("ReactNative", String.format("Connected to Muse headband %s", this.muse.getName()));
+       Log.i("ReactNative", String.format("Connected to %s", this.muse.getName()));
      }
+  }
+
+  private MuseDataListener createMuseDataListener()
+  {
+    return new MuseDataListener()
+    {
+      @Override
+      public void receiveMuseDataPacket(MuseDataPacket packet, Muse muse)
+      {
+        MuseDataPacketType type = packet.packetType();
+        WritableMap data = null;
+        switch(type)
+        {
+          case EEG:
+            data = RNLibMuseModule.getEegChannelValues(packet);
+            /*
+            for (String key : data.toHashMap().keySet())
+            {
+              Log.i("ReactNative", String.format("%s -> %lf", key, data.getDouble(key)));
+            }
+            return;*/
+            break;
+          case ACCELEROMETER:
+            break;
+          case GYRO:
+            break;
+          default:
+            break;
+        }
+        if (data != null) RNLibMuseModule.this.emitEvent("MUSE_"+type.name(), data);
+      }
+
+      @Override
+      public void receiveMuseArtifactPacket(MuseArtifactPacket packet, Muse muse)
+      {
+        //TODO: Implement this method
+      }
+    };
+  }
+
+  private static WritableMap getEegChannelValues(MuseDataPacket packet)
+  {
+    WritableMap data = Arguments.createMap();
+    for (Eeg channel : Eeg.values()) data.putDouble(channel.name(), packet.getEegChannelValue(channel));
+    return data;
   }
 
   private MuseConnectionListener createMuseConnectionListener()
