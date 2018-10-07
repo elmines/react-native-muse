@@ -149,12 +149,16 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
     this.emitEvent("OnMuseListChanged", eventArgs);
   }
 
-  private static void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
+  private void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
   {
      final ConnectionState currState = packet.getCurrentConnectionState();
      Log.i("ReactNative", String.format("%s: %s -> %s", muse.getName(),
                             packet.getPreviousConnectionState().toString(),
                             currState.toString()));
+     if (currState == ConnectionState.DISCONNECTED)
+     {
+       RNLibMuseModule.this.emitEvent("OnMuseDisconnect", muse.getName());
+     }
   }
 
   private MuseDataListener createMuseDataListener()
@@ -206,7 +210,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
       @Override
       public void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
       {
-        RNLibMuseModule.receiveMuseConnectionPacket(packet, muse);
+        RNLibMuseModule.this.receiveMuseConnectionPacket(packet, muse);
       }
     };
   }
