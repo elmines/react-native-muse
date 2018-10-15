@@ -202,7 +202,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
         if (data != null)
         {
           RNLibMuseModule.this.eegBuffer.pushMap(data);
-          if (RNLibMuseModule.size() >= RNLibMuseModule.bufferSize)
+          if (RNLibMuseModule.this.eegBuffer.size() >= RNLibMuseModule.bufferSize)
             RNLibMuseModule.this.emitEvent("MUSE_"+type.name(), data);
         }
       }
