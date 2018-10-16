@@ -9,6 +9,8 @@ import com.facebook.react.bridge.Callback;
 //EVENTS
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.bridge.WritableNativeArray;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
@@ -30,6 +32,7 @@ import com.choosemuse.libmuse.Eeg;
 
 //UTILITIES
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -41,13 +44,13 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.app.Activity;
 
+
 //DEBUGGING
 import android.util.Log;
 
 public class RNLibMuseModule extends ReactContextBaseJavaModule {
 
   public static Activity mainActivity;
-
   public static final Object EEG_NAN = null; //Use the null reference to represent NaN
 
   @ReactMethod
@@ -88,8 +91,8 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
       public void museListChanged(){RNLibMuseModule.this.museListChanged();}
     });
     this.muses = this.manager.getMuses(); //FIXME: Just initialize to null?
+    this.eegBuffer = RNLibMuseModule.createEegBuffer();
   }
-
 
 
   @ReactMethod
@@ -130,7 +133,9 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
    * A WritableArray of WritableMap's,
    * where each WritableMap is a packet of EEG data from one timestamp
    */
-  private WritableArray                         eegBuffer;
+  private List<WritableMap>             eegBuffer;
+
+  private static List<WritableMap> createEegBuffer(){return new LinkedList<WritableMap>();}
 
 
   private void startListening() {this.manager.startListening(); Log.i("ReactNative", "Started listening");}
@@ -186,6 +191,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
       {
         MuseDataPacketType type = packet.packetType();
         WritableMap data = null;
+
         switch(type)
         {
           case EEG:
@@ -201,9 +207,13 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
         }
         if (data != null)
         {
-          RNLibMuseModule.this.eegBuffer.pushMap(data);
+          RNLibMuseModule.this.eegBuffer.add(data);
           if (RNLibMuseModule.this.eegBuffer.size() >= RNLibMuseModule.bufferSize)
-            RNLibMuseModule.this.emitEvent("MUSE_"+type.name(), data);
+          {
+            WritableNativeArray eventContent = Arguments.makeNativeArray(RNLibMuseModule.this.eegBuffer);
+            RNLibMuseModule.this.emitEvent("MUSE_"+type.name(), eventContent);
+            RNLibMuseModule.this.eegBuffer = RNLibMuseModule.createEegBuffer();
+          }
         }
       }
 
@@ -215,9 +225,10 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
     };
   }
 
-  private static WritableMap getEegChannelValues(MuseDataPacket packet)
+  private static WritableNativeMap getEegChannelValues(MuseDataPacket packet)
   {
-    WritableMap data = Arguments.createMap();
+    //FIXME: That cast assumes knowledge of createMaps()'s implementation
+    WritableNativeMap data = (WritableNativeMap) Arguments.createMap();
     for (Eeg channel : RNLibMuseModule.eegChannels)
     {
       data.putDouble(channel.name(), packet.getEegChannelValue(channel));
