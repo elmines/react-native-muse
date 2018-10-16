@@ -50,6 +50,9 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
 
   public static final Object EEG_NAN = null; //Use the null reference to represent NaN
 
+  @ReactMethod
+  public static void setBufferSize(int bufferSize){RNLibMuseModule.bufferSize = bufferSize;}
+
   @Override
   public Map<String, Object> getConstants()
   {
@@ -87,6 +90,8 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
     this.muses = this.manager.getMuses(); //FIXME: Just initialize to null?
   }
 
+
+
   @ReactMethod
   public void search()
   {
@@ -111,6 +116,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   }
 
   private static final Eeg[] eegChannels = {Eeg.EEG1, Eeg.EEG2, Eeg.EEG3, Eeg.EEG4};
+  private static       int   bufferSize  = 32; //Note this can be changed with setBufferSize()
 
   private final ReactApplicationContext reactContext;
   private MuseManagerAndroid                 manager;
@@ -119,6 +125,12 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   private MuseDataListener              dataListener;
   private List<Muse>                           muses;
   private Muse                                  muse;
+
+  /**
+   * A WritableArray of WritableMap's,
+   * where each WritableMap is a packet of EEG data from one timestamp
+   */
+  private WritableArray                         eegBuffer;
 
 
   private void startListening() {this.manager.startListening(); Log.i("ReactNative", "Started listening");}
@@ -155,7 +167,11 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
      Log.i("ReactNative", String.format("%s: %s -> %s", muse.getName(),
                             packet.getPreviousConnectionState().toString(),
                             currState.toString()));
-     if (currState == ConnectionState.DISCONNECTED)
+     if (currState == ConnectionState.CONNECTED)
+     {
+       RNLibMuseModule.this.emitEvent("OnMuseConnect", muse.getName());
+     }
+     else if (currState == ConnectionState.DISCONNECTED)
      {
        RNLibMuseModule.this.emitEvent("OnMuseDisconnect", muse.getName());
      }
@@ -174,6 +190,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
         {
           case EEG:
             data = RNLibMuseModule.getEegChannelValues(packet);
+            data.putDouble("timestamp", ((double) packet.timestamp() / 1000)); //Timestamp in milliseconds
             break;
           case ACCELEROMETER:
             break;
@@ -182,7 +199,12 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
           default:
             break;
         }
-        if (data != null) RNLibMuseModule.this.emitEvent("MUSE_"+type.name(), data);
+        if (data != null)
+        {
+          RNLibMuseModule.this.eegBuffer.pushMap(data);
+          if (RNLibMuseModule.size() >= RNLibMuseModule.bufferSize)
+            RNLibMuseModule.this.emitEvent("MUSE_"+type.name(), data);
+        }
       }
 
       @Override
