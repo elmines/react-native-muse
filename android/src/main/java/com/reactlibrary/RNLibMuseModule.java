@@ -138,12 +138,11 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   private static List<WritableMap> createEegBuffer(){return new LinkedList<WritableMap>();}
 
 
-  private void startListening() {this.manager.startListening(); Log.i("ReactNative", "Started listening");}
+  private void startListening() {this.manager.startListening();}
   private void stopListening() {this.manager.stopListening();}
 
   private void emitEvent(String name, Object args)
   {
-    Log.i("ReactNative", String.format("Emitting %s", name));
     this.reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(name, args);
   }
 
@@ -168,19 +167,12 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
 
   private void receiveMuseConnectionPacket(MuseConnectionPacket packet, Muse muse)
   {
-     final ConnectionState currState = packet.getCurrentConnectionState();
-     Log.i("ReactNative", String.format("%s: %s -> %s", muse.getName(),
-                            packet.getPreviousConnectionState().toString(),
-                            currState.toString()));
-     if (currState == ConnectionState.CONNECTED)
-     {
-       RNLibMuseModule.this.emitEvent("OnMuseConnect", muse.getName());
-     }
-     else if (currState == ConnectionState.DISCONNECTED)
-     {
-       RNLibMuseModule.this.emitEvent("OnMuseDisconnect", muse.getName());
-     }
+     WritableArray arguments = Arguments.createArray();
+     arguments.pushString(muse.getName());
+     arguments.pushString(packet.getCurrentConnectionState().toString());
+     RNLibMuseModule.this.emitEvent("ChangeMuseConnectionState", arguments);
   }
+
 
   private MuseDataListener createMuseDataListener()
   {
