@@ -3,10 +3,10 @@
 import { NativeModules } from 'react-native';
 
 import {DeviceManager} from "react-native-bci";
-import type {DeviceManager, DataPacket} from "react-native-bci";
+import type {DataPacket} from "react-native-bci";
 
 import {Observable} from "rxjs";
-import type {Observable} from "rxjs";
+//import type {Observable} from "rxjs";
 
 RNLibMuse = NativeModules.RNLibMuse;
 
