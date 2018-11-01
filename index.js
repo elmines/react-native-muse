@@ -5,7 +5,7 @@ import type {DataPacket} from "react-native-bci";
 import {Observable} from "rxjs";
 RNLibMuse = NativeModules.RNLibMuse;
 
-export default class MuseDeviceManager extends DeviceManager
+export class MuseDeviceManager extends DeviceManager
 {
   static channelNames: Array<string> = RNLibMuse.getChannelNames();
   static samplingRate: number = 256; //TODO: Get this from the underlying native module
