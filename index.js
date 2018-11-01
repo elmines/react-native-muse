@@ -10,7 +10,7 @@ import type {Observable} from "rxjs";
 
 RNLibMuse = NativeModules.RNLibMuse;
 
-export default MuseDeviceManager extends DeviceManager
+export default class MuseDeviceManager extends DeviceManager
 {
   static channelNames: Array<string> = RNLibMuse.getChannelNames();
   static samplingRate: number = 256; //TODO: Get this from the underlying native module

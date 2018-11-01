@@ -15,7 +15,7 @@
     "react-native": "^0.41.2"
   },
   "dependencies": {
-    "react-native-bci": "0.0.2",
+    "react-native-bci": "git+file:/home/elmines/git/react-native-bci#local",
     "rxjs": "^6.3.3"
   },
   "devDependencies": {
