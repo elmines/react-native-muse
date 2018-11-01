@@ -94,6 +94,17 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
     this.eegBuffer = RNLibMuseModule.createEegBuffer();
   }
 
+  @ReactMethod
+  public WritableArray getChannelNames()
+  {
+  	//private static final Eeg[] eegChannels = {Eeg.EEG1, Eeg.EEG2, Eeg.EEG3, Eeg.EEG4};
+	WritableArray channelNames = Arguments.createArray();
+	for (Eeg channel : eegChannels) channelNames.pushString(channel.toString());
+	return channelNames;
+  }
+
+  @ReactMethod public void startListening() {this.manager.startListening();}
+  @ReactMethod public void stopListening() {this.manager.stopListening();}
 
   @ReactMethod
   public void search()
@@ -138,8 +149,7 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   private static List<WritableMap> createEegBuffer(){return new LinkedList<WritableMap>();}
 
 
-  private void startListening() {this.manager.startListening();}
-  private void stopListening() {this.manager.stopListening();}
+
 
   private void emitEvent(String name, Object args)
   {

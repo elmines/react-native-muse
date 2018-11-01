@@ -14,5 +14,13 @@
   "peerDependencies": {
     "react-native": "^0.41.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "react-native-bci": "0.0.2",
+    "rxjs": "^6.3.3"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.1.2",
+    "@babel/core": "^7.1.2",
+    "@babel/preset-flow": "^7.0.0"
+  }
 }
