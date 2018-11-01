@@ -1,19 +1,29 @@
 //@flow
-
 import { NativeModules } from 'react-native';
-
 import {DeviceManager} from "react-native-bci";
 import type {DataPacket} from "react-native-bci";
-
 import {Observable} from "rxjs";
-//import type {Observable} from "rxjs";
-
 RNLibMuse = NativeModules.RNLibMuse;
 
 export default class MuseDeviceManager extends DeviceManager
 {
   static channelNames: Array<string> = RNLibMuse.getChannelNames();
   static samplingRate: number = 256; //TODO: Get this from the underlying native module
+
+  static instance: MuseDeviceManager = null;
+
+  constructor(): MuseDeviceManager
+  {
+    if (MuseDeviceManager.instance) throw "Error: There can only be one MuseDeviceManager";
+    RNLibMuse.Init();
+    RNLibMuse.setBufferSize(64);
+  }
+
+  getInstance(): MuseDeviceManager
+  {
+    if (!MuseDeviceManager.instance) MuseDeviceManager.instance = new MuseDeviceManager();
+    return MuseDeviceManager.instance;
+  }
 
   getChannelNames(): Array<string>{return MuseDeviceManager.channelNames;}
 
