@@ -12,6 +12,12 @@ export class MuseDeviceManager extends DeviceManager
 
   static instance: MuseDeviceManager = null;
 
+  static getInstance(): MuseDeviceManager
+  {
+    if (!MuseDeviceManager.instance) MuseDeviceManager.instance = new MuseDeviceManager();
+    return MuseDeviceManager.instance;
+  }
+
   constructor(): MuseDeviceManager
   {
     if (MuseDeviceManager.instance) throw "Error: There can only be one MuseDeviceManager";
@@ -19,11 +25,6 @@ export class MuseDeviceManager extends DeviceManager
     RNLibMuse.setBufferSize(64);
   }
 
-  getInstance(): MuseDeviceManager
-  {
-    if (!MuseDeviceManager.instance) MuseDeviceManager.instance = new MuseDeviceManager();
-    return MuseDeviceManager.instance;
-  }
 
   getChannelNames(): Array<string>{return MuseDeviceManager.channelNames;}
 
