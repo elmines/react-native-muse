@@ -17,7 +17,7 @@ export default MuseDeviceManager extends DeviceManager
 
   getChannelNames(): Array<string>{return MuseDeviceManager.channelNames;}
 
-  dataSubject(): Observable<DataPacket>
+  data(): Observable<DataPacket>
   {
     const packetStream: Observable = Observable.create(function(observer){
       DeviceEventEmitter.addListener("MUSE_EEG", (buffer) => {
