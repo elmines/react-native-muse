@@ -156,7 +156,6 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
       case CONNECTED:     return "Connected";
       case CONNECTING:    return "Connecting";
       case DISCONNECTED:  return "Disconnected";
-      case DISCONNECTING: return "Disconnecting";
       default:            return "Unknown";
     }
   }
