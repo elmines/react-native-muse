@@ -1,24 +1,26 @@
 //@flow
-import { NativeModules } from 'react-native';
-import {DeviceManager} from "react-native-bci";
+import { NativeModules, DeviceEventEmitter } from 'react-native';
+import type {DeviceManager} from "react-native-bci";
 import type {DataPacket} from "react-native-bci";
 import {Observable} from "rxjs";
-RNLibMuse = NativeModules.RNLibMuse;
+const RNLibMuse = NativeModules.RNLibMuse;
 
-export class MuseDeviceManager extends DeviceManager
+export class MuseDeviceManager implements DeviceManager
 {
   static channelNames: Array<string> = RNLibMuse.getChannelNames();
   static samplingRate: number = 256; //TODO: Get this from the underlying native module
 
-  static instance: MuseDeviceManager = null;
+  static initialized = false;
+  static instance: MuseDeviceManager;
 
   static getInstance(): MuseDeviceManager
   {
-    if (!MuseDeviceManager.instance) MuseDeviceManager.instance = new MuseDeviceManager();
+    if (!MuseDeviceManager.initialized) MuseDeviceManager.instance = new MuseDeviceManager();
+    MuseDeviceManager.initialized = true;
     return MuseDeviceManager.instance;
   }
 
-  constructor(): MuseDeviceManager
+  constructor()
   {
     if (MuseDeviceManager.instance) throw "Error: There can only be one MuseDeviceManager";
     RNLibMuse.Init();
@@ -38,7 +40,7 @@ export class MuseDeviceManager extends DeviceManager
     return packetStream;
   }
 
-  connect(museID: string) : void {RNLibMuse.connect(string);}
+  connect(museID: string) : void {RNLibMuse.connect(museID);}
   startListening(): void {RNLibMuse.startListening();}
   stopListening(): void {RNLibMuse.stopListening();}
 
@@ -49,7 +51,7 @@ export class MuseDeviceManager extends DeviceManager
       data: MuseDeviceManager.channelNames.map(channelName => packet[channelName]),
       timestamp: new Date(packet.timestamp), //eeg_packet.timestamp is in millliseconds since epoch
       info: {
-        samplingRate: LibMuse.samplingRate,
+        samplingRate: RNLibMuse.samplingRate,
         channelNames: MuseDeviceManager.channelNames
       }
     }
