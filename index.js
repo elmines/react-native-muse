@@ -9,34 +9,13 @@ const RNLibMuse = NativeModules.RNLibMuse;
 
 export class MuseDeviceManager implements DeviceManager
 {
-  static channelNames: Array<string> = RNLibMuse.getChannelNames();
-  static samplingRate: number = 256; //TODO: Get this from the underlying native module
-
-  static devicesInitialized: boolean = false;
-  static devicesObservable: Observable<Array<string>>;
-
-  //static initialized: boolean = false;
-  //static instance: MuseDeviceManager;
-  static instance: Singleton<MuseDeviceManager> = new Singleton((): MuseDeviceManager =>
-  {
-	const manager: MuseDeviceManager = new MuseDeviceManager();
-	return manager;
-  });
-
-
+  //PUBLIC, STATIC
   static getInstance(): MuseDeviceManager{return this.instance.getInstance();}
 
-  constructor()
-  {
-    if (MuseDeviceManager.instance.isInitialized())
-      throw "Error: There can only be one MuseDeviceManager";
-    RNLibMuse.Init();
-    RNLibMuse.setBufferSize(64);
-  }
+  //PUBLIC, INSTANCE
 
-
+  //DeviceManager implementation
   getChannelNames(): Array<string>{return MuseDeviceManager.channelNames;}
-
   data(): Observable<DataPacket>
   {
     const packetStream: Observable = Observable.create(function(observer){
@@ -46,25 +25,7 @@ export class MuseDeviceManager implements DeviceManager
     });
     return packetStream;
   }
-
-  devices(): Observable<Array<string>>
-  {
-	if (!MuseDeviceManager.devicesInitialized)
-	{
-		MuseDeviceManager.devicesObservable =
-			Observable.create((observer: Observer): void =>
-			{
-				DeviceEventEmitter.addListener("OnMuseListChanged", (muses: Array<string>): void =>
-				{
-        				//if (muses.length > 0) museManager.connect(muses[0]);
-					observer.next(muses);
-				});
-			});
-	}
-
-	return MuseDeviceManager.devicesObservable;
-  }
-
+  devices(): Observable<Array<string>> {return MuseDeviceManager.devicesObservable.getInstance();}
   connect(museID: string) : void {RNLibMuse.connect(museID);}
   startListening(): void {RNLibMuse.startListening();}
   stopListening(): void {RNLibMuse.stopListening();}
@@ -72,8 +33,31 @@ export class MuseDeviceManager implements DeviceManager
   //Not part of DeviceManager, but convenient
   search(): void {this.stopListening(); this.startListening();}
 
-  //private
-  formatPacket(packet: any): DataPacket
+
+
+
+  //PRIVATE, STATIC
+  static channelNames: Array<string> = RNLibMuse.getChannelNames();
+  static samplingRate: number = 256; //TODO: Get this from the underlying native module
+
+  static devicesObservable: Singleton<Observable<Array<string>>> =
+    new Singleton((): Observable<Array<string>> =>
+    {
+    	  return Observable.create((observer: Observer): void =>
+	  {
+		  DeviceEventEmitter.addListener("OnMuseListChanged", (muses: Array<string>): void =>
+		  {
+			  observer.next(muses);
+		  });
+	  });
+    });
+
+  static instance: Singleton<MuseDeviceManager> = new Singleton((): MuseDeviceManager =>
+  {
+    return new MuseDeviceManager();
+  });
+
+  static formatPacket(packet: any): DataPacket
   {
     return {
       data: MuseDeviceManager.channelNames.map(channelName => packet[channelName]),
@@ -84,5 +68,15 @@ export class MuseDeviceManager implements DeviceManager
       }
     }
   }
+
+  //PRIVATE, INSTANCE
+  constructor()
+  {
+    if (MuseDeviceManager.instance.isInitialized())
+      throw "Error: There can only be one MuseDeviceManager";
+    RNLibMuse.Init();
+    RNLibMuse.setBufferSize(64);
+  }
+
 
 }
