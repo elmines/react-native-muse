@@ -3,6 +3,8 @@ import { NativeModules, DeviceEventEmitter } from 'react-native';
 import type {DeviceManager} from "react-native-bci";
 import type {DataPacket} from "react-native-bci";
 import {Observable, Observer} from "rxjs";
+import Singleton from "flow-singleton";
+
 const RNLibMuse = NativeModules.RNLibMuse;
 
 export class MuseDeviceManager implements DeviceManager
@@ -10,22 +12,24 @@ export class MuseDeviceManager implements DeviceManager
   static channelNames: Array<string> = RNLibMuse.getChannelNames();
   static samplingRate: number = 256; //TODO: Get this from the underlying native module
 
-  static initialized: boolean = false;
-  static instance: MuseDeviceManager;
-
   static devicesInitialized: boolean = false;
   static devicesObservable: Observable<Array<string>>;
 
-  static getInstance(): MuseDeviceManager
+  //static initialized: boolean = false;
+  //static instance: MuseDeviceManager;
+  static instance: Singleton<MuseDeviceManager> = new Singleton((): MuseDeviceManager =>
   {
-    if (!MuseDeviceManager.initialized) MuseDeviceManager.instance = new MuseDeviceManager();
-    MuseDeviceManager.initialized = true;
-    return MuseDeviceManager.instance;
-  }
+	const manager: MuseDeviceManager = new MuseDeviceManager();
+	return manager;
+  });
+
+
+  static getInstance(): MuseDeviceManager{return this.instance.getInstance();}
 
   constructor()
   {
-    if (MuseDeviceManager.instance) throw "Error: There can only be one MuseDeviceManager";
+    if (MuseDeviceManager.instance.isInitialized())
+      throw "Error: There can only be one MuseDeviceManager";
     RNLibMuse.Init();
     RNLibMuse.setBufferSize(64);
   }
