@@ -28,6 +28,7 @@ import com.choosemuse.libmuse.MuseDataPacket;
 import com.choosemuse.libmuse.MuseArtifactPacket;
 import com.choosemuse.libmuse.MuseDataPacketType;
 import com.choosemuse.libmuse.MuseDataPacketType.*; //Need the unqualified enumeration constants
+import com.choosemuse.libmuse.ConnectionState.*; //Need the unqualified enumeration constants
 import com.choosemuse.libmuse.Eeg;
 
 //UTILITIES
@@ -148,8 +149,17 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
 
   private static List<WritableMap> createEegBuffer(){return new LinkedList<WritableMap>();}
 
-
-
+  private static String connectionStateText(ConnectionState state)
+  {
+    switch (state)
+    {
+      case CONNECTED:     return "Connected";
+      case CONNECTING:    return "Connecting";
+      case DISCONNECTED:  return "Disconnected";
+      case DISCONNECTING: return "Disconnecting";
+      default:            return "Unknown";
+    }
+  }
 
   private void emitEvent(String name, Object args)
   {
@@ -179,7 +189,9 @@ public class RNLibMuseModule extends ReactContextBaseJavaModule {
   {
      WritableArray arguments = Arguments.createArray();
      arguments.pushString(muse.getName());
-     arguments.pushString(packet.getCurrentConnectionState().toString());
+     arguments.pushString(RNLibMuseModule.connectionStateText(
+       packet.getCurrentConnectionState()));
+
      RNLibMuseModule.this.emitEvent("ChangeMuseConnectionState", arguments);
   }
 
