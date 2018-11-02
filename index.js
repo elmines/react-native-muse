@@ -41,6 +41,7 @@ export class MuseDeviceManager implements DeviceManager
   }
 
   connect(museID: string) : void {RNLibMuse.connect(museID);}
+  search(): void {this.stopListening(); this.startListening();}
   startListening(): void {RNLibMuse.startListening();}
   stopListening(): void {RNLibMuse.stopListening();}
 
