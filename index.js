@@ -2,7 +2,7 @@
 import { NativeModules, DeviceEventEmitter } from 'react-native';
 import type {DeviceManager} from "react-native-bci";
 import type {DataPacket} from "react-native-bci";
-import {Observable} from "rxjs";
+import {Observable, Observer} from "rxjs";
 const RNLibMuse = NativeModules.RNLibMuse;
 
 export class MuseDeviceManager implements DeviceManager
@@ -10,8 +10,11 @@ export class MuseDeviceManager implements DeviceManager
   static channelNames: Array<string> = RNLibMuse.getChannelNames();
   static samplingRate: number = 256; //TODO: Get this from the underlying native module
 
-  static initialized = false;
+  static initialized: boolean = false;
   static instance: MuseDeviceManager;
+
+  static devicesInitialized: boolean = false;
+  static devicesObservable: Observable<Array<string>>;
 
   static getInstance(): MuseDeviceManager
   {
@@ -40,10 +43,30 @@ export class MuseDeviceManager implements DeviceManager
     return packetStream;
   }
 
+  devices(): Observable<Array<string>>
+  {
+	if (!MuseDeviceManager.devicesInitialized)
+	{
+		MuseDeviceManager.devicesObservable =
+			Observable.create((observer: Observer): void =>
+			{
+				DeviceEventEmitter.addListener("OnMuseListChanged", (muses: Array<string>): void =>
+				{
+        				//if (muses.length > 0) museManager.connect(muses[0]);
+					observer.next(muses);
+				});
+			});
+	}
+
+	return MuseDeviceManager.devicesObservable;
+  }
+
   connect(museID: string) : void {RNLibMuse.connect(museID);}
-  search(): void {this.stopListening(); this.startListening();}
   startListening(): void {RNLibMuse.startListening();}
   stopListening(): void {RNLibMuse.stopListening();}
+
+  //Not part of DeviceManager, but convenient
+  search(): void {this.stopListening(); this.startListening();}
 
   //private
   formatPacket(packet: any): DataPacket
