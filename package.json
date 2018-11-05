@@ -1,5 +1,5 @@
 {
-  "name": "rn-libmuse",
+  "name": "react-native-muse",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
@@ -15,8 +15,8 @@
     "react-native": "^0.41.2"
   },
   "dependencies": {
-    "flow-singleton": "git+file:/home/elmines/git/flow-singleton",
-    "react-native-bci": "git+file:/home/elmines/git/react-native-bci#local",
+    "flow-singleton": "0.0.2",
+    "react-native-bci": "0.0.3",
     "rxjs": "^6.3.3"
   },
   "devDependencies": {

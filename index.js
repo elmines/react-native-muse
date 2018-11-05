@@ -15,15 +15,7 @@ export class MuseDeviceManager implements DeviceManager
 
   //DeviceManager implementation
   getChannelNames(): Array<string>{return MuseDeviceManager.channelNames;}
-  data(): Observable<DataPacket>
-  {
-    const packetStream: Observable = Observable.create(function(observer){
-      DeviceEventEmitter.addListener("MUSE_EEG", (buffer) => {
-        buffer.forEach(packet => {observer.next(packet);});
-      });
-    });
-    return packetStream;
-  }
+  data(): Observable<DataPacket>{return this.dataObservable.getInstance();}
   devices(): Observable<Array<string>> {return this.devicesObservable.getInstance();}
   connections(): Observable<ConnectionPacket> {return this.connectionsObservable.getInstance();}
   connect(museID: string) : void {RNLibMuse.connect(museID);}
@@ -58,6 +50,7 @@ export class MuseDeviceManager implements DeviceManager
   }
 
   //PRIVATE, INSTANCE
+  dataObservable: Singleton<Observable<DataPacket>>;
   devicesObservable: Singleton<Observable<Array<string>>>;
   connectionsObservable: Singleton<Observable<ConnectionPacket>>;
   constructor()
@@ -66,12 +59,20 @@ export class MuseDeviceManager implements DeviceManager
       throw "Error: There can only be one MuseDeviceManager";
     RNLibMuse.Init();
     RNLibMuse.setBufferSize(64);
+
+    this.dataObservable = new Singleton((): Observable<DataPacket> => {
+      return Observable.create((observer: Observer): void => {
+        DeviceEventEmitter.addListener("MUSE_EEG", (buffer) => {
+          buffer.forEach(packet => {observer.next(packet);});
+        });
+      });
+    });
     this.devicesObservable = new Singleton((): Observable<Array<string>> => {
       return Observable.create((observer: Observer): void => {
         DeviceEventEmitter.addListener("OnMuseListChanged", (muses: Array<string>): void => {
           observer.next(muses);
         });
-  	  });
+      });
     });
     this.connectionsObservable = new Singleton((): Observable<ConnectionPacket> => {
         return Observable.create((observer: Observer): void => {
